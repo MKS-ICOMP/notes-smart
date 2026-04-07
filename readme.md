@@ -1,102 +1,255 @@
-# Trabalho Prático: SmartNotes API
-**Disciplina:** Desenvolvimento Web e Frameworks Web
+# SmartNotes API
 
-## 1. Descrição
-O **SmartNotes** é uma aplicação de notas pessoais onde cada usuário gerencia suas próprias notas com total privacidade. O trabalho foca no desenvolvimento da **API** em Node.js que servirá ao frontend já existente.
+API backend desenvolvida como trabalho prático da disciplina **Desenvolvimento Web e Frameworks Web**.
 
-## 2. Stack Obrigatória
-A API deve ser construída utilizando as seguintes tecnologias:
+O frontend da aplicação já está implementado e disponível em repositório do Github. 
+
+https://github.com/dbfernandes/smartnotes-frontend
+
+O trabalho consiste em implementar a API que o frontend consome.
+
+O projeto implementa uma API REST para gerenciamento de notas pessoais, com autenticação baseada em sessão, persistência em MySQL e isolamento de dados por usuário.
+
+## Objetivo
+
+Permitir que cada usuário:
+
+- crie sua própria conta
+- faça login com sessão via cookie
+- gerencie apenas as suas próprias notas
+
+## Tecnologias Utilizadas
 
 | Camada | Tecnologia |
 | :--- | :--- |
-| **Runtime** | Node.js |
-| **Framework** | Express.js |
-| **Linguagem** | TypeScript |
-| **ORM** | Prisma |
-| **Banco de dados** | MySQL |
-| **Validação** | Joi |
-| **Autenticação** | express-session |
-| **Hash de senha** | bcryptjs |
+| Runtime | Node.js |
+| Framework | Express.js |
+| Linguagem | TypeScript |
+| ORM | Prisma |
+| Banco de dados | MySQL |
+| Validação | Joi |
+| Sessão | express-session |
+| Hash de senha | bcryptjs |
+| Segurança | Helmet, CORS, express-rate-limit |
+| Ambiente local | Docker Compose |
 
-## 3. Modelo de Dados
-O aluno deve criar o schema Prisma contendo duas entidades principais:
+## Funcionalidades Implementadas
+
+### Autenticação
+
+- `POST /v1/auth/signup`
+- `POST /v1/auth/login`
+- `POST /v1/auth/logout`
+
+### Notas
+
+- `GET /v1/notes`
+- `POST /v1/notes`
+- `GET /v1/notes/:id`
+- `PUT /v1/notes/:id`
+- `DELETE /v1/notes/:id`
+
+### Regras atendidas
+
+- autenticação por sessão com cookie
+- hash de senha com `bcryptjs`
+- validação de entrada com `Joi`
+- proteção de rotas com middleware de autenticação
+- controle de acesso por usuário
+- proteção contra IDOR com retorno `404`
+- rate limiting global e para autenticação
+- uso de variáveis de ambiente com `.env`
+- `helmet` e `cors` configurados
+- execução do `bcrypt` mesmo quando o e-mail não existe no login
+
+## Modelo de Dados
 
 ### User
-* **id:** String (UUID, chave primária)
-* **email:** String (Único, máx. 100 caracteres)
-* **fullname:** String (Máx. 100 caracteres)
-* **password:** String (60 caracteres para o hash bcrypt)
-* **createdAt / updatedAt:** DateTime (Gerados automaticamente)
+
+- `id`: UUID
+- `email`: único, até 100 caracteres
+- `fullname`: até 100 caracteres
+- `password`: hash bcrypt com 60 caracteres
+- `createdAt`
+- `updatedAt`
 
 ### Note
-* **id:** String (UUID, chave primária)
-* **userId:** String (Chave estrangeira vinculada a User)
-* **title:** String (Máx. 100 caracteres)
-* **content:** String (Texto longo)
-* **createdAt / updatedAt:** DateTime (Gerados automaticamente)
 
-## 4. Endpoints (Prefixo `/v1`)
+- `id`: UUID
+- `userId`: chave estrangeira para `User`
+- `title`: até 100 caracteres
+- `content`: texto longo
+- `createdAt`
+- `updatedAt`
 
-### 4.1 Autenticação (`/v1/auth`)
-* **POST /signup:** Cria conta. Retorna 201 (Sucesso), 400 (E-mail duplicado) ou 422 (Erro de validação).
-* **POST /login:** Autentica e inicia sessão (Cookie). Retorna 200 (Sucesso), 401 (Inválido) ou 422 (Erro de validação).
-* **POST /logout:** Encerra sessão (Rota protegida). Retorna 200 ou 401.
+## Estrutura do Projeto
 
-### 4.2 Notas (`/v1/notes`)
-*Todas as rotas abaixo requerem sessão ativa e limitam-se aos dados do usuário autenticado*
-
-* **GET /:** Lista todas as notas do usuário.
-* **POST /:** Cria nova nota.
-* **GET /:id:** Detalhes de uma nota específica.
-* **PUT /:id:** Atualiza uma nota.
-* **DELETE /:id:** Remove uma nota.
-
-## 5. Regras de Validação
-* **Senha:** Mínimo 8 caracteres, maiúsculas, minúsculas, números e caracteres especiais.
-* **Título:** Entre 3 e 100 caracteres.
-* **Conteúdo:** Mínimo 1 caractere.
-
-## 6. Requisitos de Segurança (Obrigatórios) 
-* **Segredos:** Uso obrigatório de arquivo `.env`.
-* **Hash:** Senhas via bcryptjs.
-* **Sessão:** Configurar `httpOnly: true`, `secure: true` (em prod), `sameSite: "lax"` e `saveUninitialized: false`.
-* **IDOR:** Se uma nota não pertencer ao usuário, a API deve retornar **404**, nunca 403, para não revelar a existência do recurso.
-* **Rate Limiting:** Global (100 req/15min) e Auth (10 req/15min).
-* **CORS & Helmet:** Configurar origem permitida e cabeçalhos de segurança básicos.
-* **Timing Attack:** O login deve executar o bcrypt mesmo se o e-mail não existir.
-
-## 7. Estrutura de Arquivos
 ```text
-backend/
+smartnotes-backend/
 ├── prisma/
+│   ├── migrations/
 │   └── schema.prisma
+├── docs/
+│   └── docker-mysql.md
 ├── src/
-│   ├── index.ts
+│   ├── config/
+│   │   └── env.ts
+│   ├── database/
+│   │   └── prisma.ts
+│   ├── middlewares/
+│   │   ├── isAuth.ts
+│   │   ├── rateLimit.ts
+│   │   └── validateBody.ts
+│   ├── resources/
+│   │   ├── auth/
+│   │   └── note/
 │   ├── router/
 │   │   ├── index.ts
 │   │   └── v1Router.ts
-│   ├── middlewares/
-│   │   ├── isAuth.ts
-│   │   └── validateBody.ts
-│   └── resources/
-│       ├── auth/
-│       │   ├── auth.controller.ts
-│       │   ├── auth.router.ts
-│       │   └── auth.service.ts (etc.)
-│       └── note/
-│           ├── note.controller.ts
-│           └── note.service.ts (etc.)
-├── .env
-└── package.json
+│   ├── types/
+│   │   └── session.d.ts
+│   └── index.ts
+├── .env.example
+├── docker-compose.yml
+├── package.json
+├── prisma.config.ts
+└── tsconfig.json
 ```
 
-## 8. Execução do Frontend
-A API deve rodar na porta **3333** para se comunicar com o frontend (que roda na porta 3001).
+## Como Executar o Projeto
 
-## 9. Critérios de Avaliação
-* **Endpoints:** 30%
-* **Autenticação por sessão:** 15%
-* **Autorização (IDOR):** 15%
-* **Hash & Segredos:** 10%
-* **Validações (Joi):** 10%
-* **Rate Limiting, CORS, Timing Attack, Helmet:** 5% cada.
+### 1. Instalar dependências
+
+```bash
+npm install
+```
+
+### 2. Configurar variáveis de ambiente
+
+Use o arquivo `.env.example` como base para criar o `.env`.
+
+Exemplo:
+
+```env
+DATABASE_URL="mysql://root:password@localhost:3306/smartnotes"
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_USER=root
+DATABASE_PASSWORD=password
+DATABASE_NAME=smartnotes
+NODE_ENV=development
+PORT=3333
+FRONTEND_ORIGIN="http://localhost:3001"
+SESSION_SECRET="troque_este_valor"
+```
+
+### 3. Subir o banco de dados com Docker
+
+```bash
+docker compose up -d
+```
+
+### 4. Aplicar migration
+
+```bash
+npx prisma migrate dev --name init
+```
+
+### 5. Gerar client do Prisma
+
+```bash
+npx prisma generate
+```
+
+### 6. Executar a API
+
+```bash
+npm run dev
+```
+
+A aplicação será iniciada em:
+
+```text
+http://localhost:3333
+```
+
+## Scripts Disponíveis
+
+```bash
+npm run dev
+npm run prisma:migrate
+npm run prisma:generate
+npm run prisma:studio
+```
+
+## Endpoints
+
+### Health Check
+
+- `GET /v1/health`
+
+### Auth
+
+- `POST /v1/auth/signup`
+- `POST /v1/auth/login`
+- `POST /v1/auth/logout`
+
+### Notes
+
+- `GET /v1/notes`
+- `POST /v1/notes`
+- `GET /v1/notes/:id`
+- `PUT /v1/notes/:id`
+- `DELETE /v1/notes/:id`
+
+## Exemplos de Requisição
+
+### Cadastro
+
+```bash
+curl -i -X POST http://localhost:3333/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"teste@teste.com","fullname":"Teste User","password":"Senha@123"}'
+```
+
+### Login
+
+```bash
+curl -i -X POST http://localhost:3333/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{"email":"teste@teste.com","password":"Senha@123"}'
+```
+
+### Criar nota autenticada
+
+```bash
+curl -i -X POST http://localhost:3333/v1/notes \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"title":"Minha nota","content":"Conteudo da nota"}'
+```
+
+## Segurança Implementada
+
+- `SESSION_SECRET` via variável de ambiente
+- cookies com `httpOnly: true`
+- `sameSite: "lax"`
+- `secure: true` em produção
+- `saveUninitialized: false`
+- `helmet` para cabeçalhos de segurança
+- `cors` com origem permitida configurada
+- rate limiting global: `100 req / 15 min`
+- rate limiting de autenticação: `10 req / 15 min`
+- proteção contra enumeração de recursos com retorno `404`
+- comparação de senha com bcrypt também quando o e-mail não existe
+
+## Observações
+
+- O frontend esperado pelo enunciado deve se comunicar com a API pela porta `3333`.
+- O projeto foi preparado para uso local com Docker no banco MySQL.
+- O arquivo `.env` não deve ser versionado.
+
+## Aluno
+
+- Marckson Monteiro da Silva
